@@ -39,7 +39,7 @@
             {{ end }}
             <label class="auth-field">
                 <span>用户名</span>
-                <input type="text" name="username" value="{{.Username}}" autocomplete="username" required autofocus>
+                <input type="text" name="username"{{ if eq .Mode "setup" }} value="{{.Username}}" autocomplete="username"{{ else }} autocomplete="off"{{ end }} required autofocus>
             </label>
             <label class="auth-field">
                 <span>密码</span>

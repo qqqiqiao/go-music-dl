@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -125,6 +126,54 @@ func TestSafeAuthRedirectTarget(t *testing.T) {
 		if got := safeAuthRedirectTarget(tt.raw); got != tt.want {
 			t.Fatalf("safeAuthRedirectTarget(%q) = %q, want %q", tt.raw, got, tt.want)
 		}
+	}
+}
+
+func TestLoginAuthPageDoesNotRenderProvidedUsername(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.SetHTMLTemplate(newTestTemplate(t))
+	router.GET(RoutePrefix+"/login", func(c *gin.Context) {
+		renderAuthPage(c, "login", "", "private-owner")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, RoutePrefix+"/login", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "private-owner") {
+		t.Fatal("login page should not render configured username")
+	}
+	if strings.Contains(body, `name="username" value=`) {
+		t.Fatal("login username input should not render a value attribute")
+	}
+	if !strings.Contains(body, `name="username"`) || !strings.Contains(body, `autocomplete="off"`) {
+		t.Fatal("login username input should disable autocomplete")
+	}
+}
+
+func TestSetupAuthPageKeepsProvidedUsername(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.SetHTMLTemplate(newTestTemplate(t))
+	router.GET(RoutePrefix+"/setup", func(c *gin.Context) {
+		renderAuthPage(c, "setup", "", "setup-owner")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, RoutePrefix+"/setup", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `name="username" value="setup-owner" autocomplete="username"`) {
+		t.Fatal("setup username input should preserve the provided username")
 	}
 }
 

@@ -385,7 +385,7 @@ func bindAuthRoutes(api *gin.RouterGroup) {
 	api.GET("/login", func(c *gin.Context) {
 		settings, err := core.GetWebAuthSettings()
 		if err != nil {
-			renderAuthPage(c, "login", "读取登录配置失败", core.DefaultWebAuthUsername)
+			renderAuthPage(c, "login", "读取登录配置失败", "")
 			return
 		}
 		if !authConfigured(settings) {
@@ -396,13 +396,13 @@ func bindAuthRoutes(api *gin.RouterGroup) {
 			c.Redirect(http.StatusFound, safeAuthRedirectTarget(c.Query("next")))
 			return
 		}
-		renderAuthPage(c, "login", "", settings.Username)
+		renderAuthPage(c, "login", "", "")
 	})
 
 	api.POST("/login", func(c *gin.Context) {
 		settings, err := core.GetWebAuthSettings()
 		if err != nil {
-			renderAuthPage(c, "login", "读取登录配置失败", core.DefaultWebAuthUsername)
+			renderAuthPage(c, "login", "读取登录配置失败", "")
 			return
 		}
 		if !authConfigured(settings) {
