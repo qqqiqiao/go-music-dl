@@ -18,7 +18,7 @@ const (
 	DefaultWebDownloadDir           = "data/downloads"
 	DefaultDownloadFilenameTemplate = "{name} - {artist}"
 	DefaultWebAuthUsername          = "admin"
-	DefaultWebPageSize              = 50
+	DefaultWebPageSize              = 30
 	DefaultCLIPageSize              = 20
 	DefaultWebConcurrency           = 3
 	DefaultUpdateRepoURL            = "https://github.com/guohuiyuan/go-music-dl"
