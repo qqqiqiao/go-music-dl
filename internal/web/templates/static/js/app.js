@@ -428,9 +428,6 @@ function buildLyricRequestURL(song, endpoint = 'lyric', format = 'auto') {
     if (extraValue && extraValue !== '{}' && extraValue !== 'null') {
         params.set('extra', extraValue);
     }
-    if (endpoint === 'download_lrc') {
-        params.set('save_local', '1');
-    }
 
     return `${API_ROOT}/${endpoint}?${params.toString()}`;
 }
@@ -486,14 +483,12 @@ function buildCoverDownloadURL(song) {
         params.set('download', '1');
         params.set('name', String(song?.name || ''));
         params.set('artist', String(song?.artist || ''));
-        params.set('save_local', '1');
         return `${API_ROOT}/local_music/cover?${params.toString()}`;
     }
 
     params.set('url', String(song?.cover || 'https://via.placeholder.com/600?text=No+Cover'));
     params.set('name', String(song?.name || ''));
     params.set('artist', String(song?.artist || ''));
-    params.set('save_local', '1');
     return `${API_ROOT}/download_cover?${params.toString()}`;
 }
 
@@ -1016,7 +1011,7 @@ function bindPageNavigationEvents() {
     pageNavigationEventsBound = true;
 
     document.addEventListener('click', async function(event) {
-        const link = event.target.closest('.btn-download, .btn-lyric, .btn-cover');
+        const link = event.target.closest('.btn-download');
         if (!link) return;
         event.preventDefault();
         await handleDownloadClick(link);
