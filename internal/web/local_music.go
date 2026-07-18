@@ -63,6 +63,7 @@ var autoCacheInFlight = make(map[string]struct{})
 var autoCacheSlots = make(chan struct{}, autoCacheMaxConcurrent)
 var autoCacheSaveSong = core.SaveSongToFileWithTemplate
 var autoCacheIndexSavedSong = indexAutoCachedLocalMusic
+var autoCacheSettingsProvider = core.GetWebSettings
 
 type localMusicScanSnapshot struct {
 	Dir       string
@@ -481,13 +482,18 @@ func RegisterLocalMusicRoutes(api *gin.RouterGroup) {
 			return
 		}
 
+		settings := autoCacheSettingsProvider()
+		if !settings.AutoCacheOnPlay {
+			c.JSON(http.StatusOK, gin.H{"status": "skipped", "reason": "auto cache disabled"})
+			return
+		}
+
 		cacheKey := source + ":" + id
 		if status := reserveAutoCache(cacheKey); status != "started" {
 			c.JSON(http.StatusOK, gin.H{"status": status})
 			return
 		}
 
-		settings := core.GetWebSettings()
 		song := &model.Song{
 			ID:     id,
 			Source: source,

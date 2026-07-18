@@ -49,6 +49,16 @@ func newAutoCacheHTTPRequest(body []byte) *http.Request {
 	return req
 }
 
+func withAutoCacheSettings(t *testing.T, settings core.WebSettings) {
+	t.Helper()
+
+	original := autoCacheSettingsProvider
+	autoCacheSettingsProvider = func() core.WebSettings { return settings }
+	t.Cleanup(func() {
+		autoCacheSettingsProvider = original
+	})
+}
+
 func waitForAutoCacheIdle(t *testing.T) {
 	t.Helper()
 	deadline := time.Now().Add(time.Second)
@@ -723,7 +733,50 @@ func TestAutoCacheEndpointRejectsOversizedRequest(t *testing.T) {
 	}
 }
 
+func TestAutoCacheEndpointSkipsWhenDisabled(t *testing.T) {
+	withAutoCacheSettings(t, core.WebSettings{AutoCacheOnPlay: false})
+
+	originalSave := autoCacheSaveSong
+	t.Cleanup(func() {
+		waitForAutoCacheIdle(t)
+		autoCacheSaveSong = originalSave
+	})
+
+	called := make(chan struct{}, 1)
+	autoCacheSaveSong = func(_ *model.Song, _ string, _ bool, _ bool, _ string) (*core.DownloadedSong, error) {
+		called <- struct{}{}
+		return nil, nil
+	}
+
+	body, err := json.Marshal(map[string]string{"id": "song-1", "source": "qq"})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	newLocalMusicTestRouter().ServeHTTP(rec, newAutoCacheHTTPRequest(body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /local_music/auto_cache status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var response map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &response); err != nil {
+		t.Fatalf("decode auto-cache response: %v", err)
+	}
+	if response["status"] != "skipped" || response["reason"] != "auto cache disabled" {
+		t.Fatalf("auto-cache response = %#v, want skipped because auto cache is disabled", response)
+	}
+
+	select {
+	case <-called:
+		t.Fatal("auto-cache worker started while playback caching was disabled")
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
 func TestAutoCacheEndpointStartsDownloadAndIndexesSavedSong(t *testing.T) {
+	withAutoCacheSettings(t, core.WebSettings{AutoCacheOnPlay: true})
+
 	originalSave := autoCacheSaveSong
 	originalIndex := autoCacheIndexSavedSong
 	t.Cleanup(func() {
@@ -776,6 +829,8 @@ func TestAutoCacheEndpointStartsDownloadAndIndexesSavedSong(t *testing.T) {
 }
 
 func TestAutoCacheEndpointDeduplicatesInFlightRequests(t *testing.T) {
+	withAutoCacheSettings(t, core.WebSettings{AutoCacheOnPlay: true})
+
 	originalSave := autoCacheSaveSong
 	originalIndex := autoCacheIndexSavedSong
 	t.Cleanup(func() {
@@ -847,6 +902,10 @@ func TestAutoCacheClientWaitsForConfirmedLocalMatch(t *testing.T) {
 	}
 	js := string(content)
 	for _, want := range []string{
+		"autoCacheOnPlay: true",
+		"function isAutoCacheOnPlayEnabled()",
+		"if (!isAutoCacheOnPlayEnabled()) return;",
+		"if (!isAutoCacheOnPlayEnabled() || !key || localMusicMatchCache[audio.custom_id])",
 		"'X-Requested-With': 'XMLHttpRequest'",
 		"scheduleAutoCacheMatch(audio, key)",
 		"custom_id: playbackSong.id",

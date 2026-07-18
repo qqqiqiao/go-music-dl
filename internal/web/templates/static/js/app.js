@@ -43,6 +43,7 @@ let webSettings = {
     cliPageSize: DEFAULT_CLI_PAGE_SIZE,
     autoCheckUpdate: true,
     autoSwitchInvalidSources: true,
+    autoCacheOnPlay: true,
     updateRepoUrl: DEFAULT_UPDATE_REPO_URL,
     githubProxyEnabled: false,
     githubProxyUrl: DEFAULT_GITHUB_PROXY_URL,
@@ -63,6 +64,7 @@ function normalizeWebSettings(raw) {
         cliPageSize: DEFAULT_CLI_PAGE_SIZE,
         autoCheckUpdate: true,
         autoSwitchInvalidSources: true,
+        autoCacheOnPlay: true,
         updateRepoUrl: DEFAULT_UPDATE_REPO_URL,
         githubProxyEnabled: false,
         githubProxyUrl: DEFAULT_GITHUB_PROXY_URL,
@@ -99,6 +101,9 @@ function normalizeWebSettings(raw) {
     }
     if (typeof raw.autoSwitchInvalidSources === 'boolean') {
         next.autoSwitchInvalidSources = raw.autoSwitchInvalidSources;
+    }
+    if (typeof raw.autoCacheOnPlay === 'boolean') {
+        next.autoCacheOnPlay = raw.autoCacheOnPlay;
     }
     if (typeof raw.updateRepoUrl === 'string' && raw.updateRepoUrl.trim() !== '') {
         next.updateRepoUrl = raw.updateRepoUrl.trim();
@@ -262,6 +267,11 @@ function applyWebSettings(settings) {
     const autoSwitchInvalidSourcesToggle = document.getElementById('setting-auto-switch-invalid-sources');
     if (autoSwitchInvalidSourcesToggle) {
         autoSwitchInvalidSourcesToggle.checked = webSettings.autoSwitchInvalidSources;
+    }
+
+    const autoCacheOnPlayToggle = document.getElementById('setting-auto-cache-on-play');
+    if (autoCacheOnPlayToggle) {
+        autoCacheOnPlayToggle.checked = webSettings.autoCacheOnPlay;
     }
 
 
@@ -824,7 +834,12 @@ let autoCachePending = {};   // 防止重复缓存请求
 let currentPlayingId = null;
 window.currentPlayingId = null;
 
+function isAutoCacheOnPlayEnabled() {
+    return webSettings.autoCacheOnPlay !== false;
+}
+
 function scheduleAutoCache(audio) {
+    if (!isAutoCacheOnPlayEnabled()) return;
     const src = audio.source || '';
     if (src === 'local' || src === 'local-file') return;
     const key = audio.custom_id || audio.name || '';
@@ -853,7 +868,7 @@ function scheduleAutoCacheMatch(audio, key, attempt = 0) {
 }
 
 async function autoCacheTrack(audio, key = audio.custom_id || audio.name || '') {
-    if (!key || localMusicMatchCache[audio.custom_id]) {
+    if (!isAutoCacheOnPlayEnabled() || !key || localMusicMatchCache[audio.custom_id]) {
         delete autoCachePending[key];
         return;
     }
@@ -2945,6 +2960,7 @@ async function saveCookies() {
         cliPageSize: parsePositiveInt(cliPageSizeInput?.value, DEFAULT_CLI_PAGE_SIZE),
         autoCheckUpdate: webSettings.autoCheckUpdate,
         autoSwitchInvalidSources: !!document.getElementById('setting-auto-switch-invalid-sources')?.checked,
+        autoCacheOnPlay: !!document.getElementById('setting-auto-cache-on-play')?.checked,
         updateRepoUrl: webSettings.updateRepoUrl || DEFAULT_UPDATE_REPO_URL,
         githubProxyEnabled: !!webSettings.githubProxyEnabled,
         githubProxyUrl: webSettings.githubProxyUrl || DEFAULT_GITHUB_PROXY_URL,
